@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Quest — Learn Retrieval-Augmented Generation</title>
+<style>
+  :root {
+    --sky:#78d8ff; --deep:#17345b; --ink:#18233b; --paper:#fff9e9;
+    --red:#f04f4f; --yellow:#ffd84d; --green:#3bbf77; --blue:#3977e8;
+    --shadow: 0 6px 0 rgba(24,35,59,.17);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink);
+    background:linear-gradient(var(--sky) 0 340px,#b7efaa 340px 100%);min-height:100vh}
+  button,textarea,input{font:inherit}
+  button{cursor:pointer;border:3px solid var(--ink);border-radius:8px;background:var(--yellow);color:var(--ink);
+    padding:10px 14px;font-weight:900;box-shadow:0 4px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+  button:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--ink)}
+  button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+  button.secondary{background:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:0 4px 0 var(--ink)}
+  .wrap{max-width:1180px;margin:auto;padding:22px 18px 50px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .pixel-logo{width:54px;height:54px;background:var(--red);border:4px solid var(--ink);box-shadow:inset -7px -7px #bd333d,var(--shadow);
+    display:grid;place-items:center;color:white;font-size:25px;font-weight:1000;text-shadow:3px 3px var(--ink);transform:rotate(-2deg)}
+  h1{font-size:clamp(24px,4vw,38px);line-height:1;margin:0;text-shadow:2px 2px white}
+  .subtitle{font-size:12px;font-weight:800;margin-top:7px}
+  .hud{display:flex;gap:8px;flex-wrap:wrap}
+  .hud span{background:var(--paper);border:3px solid var(--ink);padding:9px 12px;border-radius:8px;box-shadow:var(--shadow);font-weight:900}
+  .intro{background:var(--paper);border:4px solid var(--ink);border-radius:12px;padding:15px 18px;box-shadow:var(--shadow);margin-bottom:18px}
+  .intro p{margin:6px 0 0;line-height:1.5}
+  .world{display:grid;grid-template-columns:260px 1fr;gap:18px;align-items:start}
+  .panel{background:var(--paper);border:4px solid var(--ink);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{background:var(--deep);color:white;padding:13px 15px;font-weight:1000;letter-spacing:.5px;border-bottom:4px solid var(--ink)}
+  .levels{padding:10px;display:grid;gap:8px}
+  .level{display:flex;align-items:center;gap:10px;text-align:left;background:#fff;border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink);padding:10px;border-radius:8px}
+  .level.active{background:var(--yellow);outline:3px solid #ff9d28}
+  .level .num{background:var(--blue);color:white;border:2px solid var(--ink);width:34px;height:34px;display:grid;place-items:center;border-radius:5px;flex-shrink:0}
+  .level small{display:block;font-size:10px;margin-top:3px;opacity:.8}
+  .progress{padding:12px 15px;border-top:3px dashed #b7b09a;font-size:12px;line-height:1.6}
+  .main{display:grid;gap:16px}
+  .stage{position:relative;min-height:156px;border:4px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);
+    background:linear-gradient(#64ceff 0 68%,#9be47e 68% 100%)}
+  .cloud{position:absolute;background:white;border-radius:20px;width:76px;height:20px;top:26px;left:12%;opacity:.9}
+  .cloud:before,.cloud:after{content:"";position:absolute;background:white;border-radius:50%;bottom:0}
+  .cloud:before{width:29px;height:29px;left:12px}.cloud:after{width:23px;height:23px;left:38px}
+  .cloud.c2{left:70%;top:48px;transform:scale(.75)}
+  .brick-row{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around}
+  .brick{width:34px;height:24px;background:#b96a3a;border:3px solid #793b2a;box-shadow:inset -4px -4px #88452c}
+  .hero{position:absolute;bottom:25px;left:8%;font-size:42px;filter:drop-shadow(2px 3px 0 #17345b);transition:left .4s}
+  .flag{position:absolute;bottom:24px;right:8%;font-size:42px}
+  .stage-label{position:absolute;top:10px;left:12px;background:var(--paper);border:2px solid var(--ink);border-radius:5px;padding:5px 8px;font-size:11px;font-weight:1000}
+  .content{padding:18px}
+  .step-title{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:21px}
+  .step-title .emoji{font-size:26px}
+  .desc{line-height:1.55;margin:0 0 14px;font-size:13px}
+  .hint{background:#e8f4ff;border-left:5px solid var(--blue);padding:10px 12px;margin:12px 0;border-radius:4px;font-size:12px;line-height:1.5}
+  .doc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .doc{background:white;border:3px solid #b8b4a6;border-radius:8px;padding:11px;text-align:left;min-height:112px;box-shadow:0 3px 0 #b8b4a6}
+  .doc.selected{border-color:var(--green);box-shadow:0 3px 0 #19864b;background:#effff4}
+  .doc b{display:block;margin-bottom:7px}.doc p{font-size:11px;line-height:1.45;margin:0}
+  .query{width:100%;min-height:78px;resize:vertical;border:3px solid var(--ink);border-radius:8px;padding:12px;background:white;line-height:1.5}
+  .controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
+  .result{background:#fff;border:3px solid var(--ink);border-radius:8px;padding:13px;margin-top:12px;line-height:1.55;font-size:13px}
+  .result h3{margin:0 0 8px;font-size:14px}
+  .tag{display:inline-block;background:#e5efff;border:1px solid #6d8ecb;border-radius:4px;padding:3px 6px;margin:2px;font-size:10px;font-weight:900}
+  .step-footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:14px;border-top:3px dashed #c6bea9}
+  .tiny{font-size:11px;line-height:1.5;color:#4d5870}
+  .bar{height:12px;background:#ded8c7;border:2px solid var(--ink);border-radius:8px;overflow:hidden;margin:8px 0}
+  .bar-in{height:100%;width:0;background:var(--green);transition:width .35s}
+  .quiz-options{display:grid;gap:8px;margin:12px 0}
+  .quiz-options button{text-align:left;background:#fff}
+  .quiz-options button.correct{background:#a7f2bd}.quiz-options button.wrong{background:#ffb9b9}
+  footer{text-align:center;font-size:10px;margin-top:24px;opacity:.8}
+  @media(max-width:760px){.world{grid-template-columns:1fr}.levels{grid-template-columns:repeat(2,1fr)}.doc-grid{grid-template-columns:1fr}.stage{min-height:135px}.hud{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="pixel-logo">R</div><div><h1>RAG QUEST</h1><div class="subtitle">A RETRIEVAL-POWERED KNOWLEDGE ADVENTURE</div></div></div>
+    <div class="hud"><span>🪙 COINS: <b id="coins">0</b></span><span>⭐ LEVEL: <b id="levelHud">1 / 6</b></span><span>🏁 <b id="status">NOT COMPLETE</b></span></div>
+  </header>
+  <section class="intro">
+    <b>MISSION: Help the AI answer using trusted documents.</b>
+    <p>RAG means <b>Retrieval-Augmented Generation</b>. Instead of relying only on what a language model learned during training, it retrieves relevant information first, then uses that information to answer. Move through the six levels to see the pipeline in action.</p>
+  </section>
+  <div class="world">
+    <aside class="panel">
+      <div class="panel-head">🗺️ WORLD MAP</div>
+      <div class="levels" id="levels"></div>
+      <div class="progress"><b>QUEST PROGRESS</b><div class="bar"><div class="bar-in" id="progressBar"></div></div><span id="progressText">0 of 6 levels cleared</span><br><span class="tiny">Tip: complete each level to unlock the next.</span></div>
+    </aside>
+    <main class="main">
+      <div class="stage">
+        <div class="cloud"></div><div class="cloud c2"></div>
+        <div class="stage-label" id="stageLabel">WORLD 1 — INGESTION</div>
+        <div class="hero" id="hero">🧑‍🚀</div><div class="flag">🚩</div>
+        <div class="brick-row"><div class="brick"></div><div class="brick"></div><div class="brick"></div><div class="brick"></div><div class="brick"></div><div class="brick"></div><div class="brick"></div><div class="brick"></div></div>
+      </div>
+      <section class="panel">
+        <div class="content" id="lesson"></div>
+      </section>
+    </main>
+  </div>
+  <footer>RETRO PLATFORMER-INSPIRED LEARNING DEMO • NO GAME ASSETS REQUIRED • ALL PROCESSING HAPPENS IN YOUR BROWSER</footer>
+</div>
+<script>
+const stages = [
+ {name:"Ingestion",icon:"📚",short:"Collect docs",title:"Level 1: Collect the knowledge",desc:"RAG starts with source material. A real system may ingest PDFs, web pages, manuals, FAQs, or database records. Here, your tiny knowledge base is already loaded.",learn:"Ingestion = bring useful source data into the system. Before retrieval can work, the system needs documents to search.",action:"Inspect the knowledge base",button:"Collect documents"},
+ {name:"Chunking",icon:"🧱",short:"Split text",title:"Level 2: Break documents into chunks",desc:"Long documents are split into smaller passages called chunks. Chunks that are too large can mix topics; chunks that are too small may lose context.",learn:"Chunking makes retrieval more precise. Systems often use overlapping chunks so a fact near a boundary is not lost.",action:"Create chunks",button:"Split into chunks"},
+ {name:"Embeddings",icon:"🧭",short:"Meaning vectors",title:"Level 3: Turn text into vectors",desc:"An embedding model converts text into a list of numbers (a vector) that represents aspects of its meaning. Similar meanings tend to have nearby vectors.",learn:"A vector is a numeric representation. This demo uses simple keyword overlap as a visual stand-in—not a real embedding model.",action:"Generate demo vectors",button:"Vectorize chunks"},
+ {name:"Retrieval",icon:"🔎",short:"Find matches",title:"Level 4: Retrieve relevant chunks",desc:"When a user asks a question, the system searches the indexed chunks and ranks likely matches. Real systems may use vector search, keyword search, or a hybrid.",learn:"Retrieval selects evidence; it does not write the final answer. Try asking a question about the sample docs.",action:"Search the knowledge base",button:"Retrieve evidence"},
+ {name:"Augmentation",icon:"🧰",short:"Build context",title:"Level 5: Prepare the prompt",desc:"The system adds the user's question and the best retrieved passages to the prompt sent to the language model. These passages are the model's reference context.",learn:"Augmentation means enriching the prompt with retrieved information. Good systems limit context size and keep source references.",action:"Assemble prompt",button:"Build augmented prompt"},
+ {name:"Generation",icon:"✨",short:"Answer + cite",title:"Level 6: Generate a grounded answer",desc:"The language model uses the question plus retrieved context to compose a response. A good RAG system should answer from the evidence, cite sources, and admit when evidence is missing.",learn:"RAG can reduce unsupported answers, but it does not guarantee truth. Retrieval quality and model behavior still matter.",action:"Generate final answer",button:"Generate answer"}
+];
+const docs = [
+ {id:1,title:"Mushroom Kingdom Guide",text:"The castle library opens at 9 AM. Visitors should bring an access pass. The library stores maps and adventure manuals."},
+ {id:2,title:"Power-Up Handbook",text:"A fire flower grants a fire ability. A super mushroom makes the hero grow. Stars provide temporary invincibility."},
+ {id:3,title:"Pipe Travel Manual",text:"Green pipes connect selected regions. Before entering a pipe, check that the destination is listed on the travel map."},
+ {id:4,title:"Coin Collection Rules",text:"Coins are collected along the route. Ten coins earn a bonus life in this imaginary game. Store collected coins in the quest counter."},
+ {id:5,title:"Castle Safety FAQ",text:"For a safe castle visit, follow marked paths and ask a guide if a route is blocked. The east gate closes at 5 PM."},
+ {id:6,title:"RAG Quick Reference",text:"RAG stands for Retrieval-Augmented Generation. It retrieves relevant external information and adds it to a language model's context before generation."}
+];
+let current=0, cleared=new Set(), coins=0, chunks=[], vectors=[], retrieved=[], lastQuery="What time does the castle library open?", chosen=new Set(), quizAnswered=false;
+const $=id=>document.getElementById(id);
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderLevels(){
+ $('levels').innerHTML=stages.map((s,i)=>`<button class="level ${i===current?'active':''}" ${i>0&&!cleared.has(i-1)?'disabled':''} onclick="go(${i})"><span class="num">${cleared.has(i)?'✓':i+1}</span><span><b>${s.name}</b><small>${s.short}</small></span></button>`).join('');
+ $('coins').textContent=coins;$('levelHud').textContent=`${current+1} / 6`;$('progressBar').style.width=(cleared.size/6*100)+'%';$('progressText').textContent=`${cleared.size} of 6 levels cleared`;$('status').textContent=cleared.size===6?'QUEST CLEAR':'IN PROGRESS';
+ $('stageLabel').textContent=`WORLD ${current+1} — ${stages[current].name.toUpperCase()}`;$('hero').style.left=(8+current*14)+'%';
+}
+function go(i){if(i>0&&!cleared.has(i-1))return;current=i;renderLevels();renderLesson();}
+function complete(){
+ if(!cleared.has(current)){cleared.add(current);coins+=10;}
+ renderLevels();
+ if(current<5){$('lesson').insertAdjacentHTML('beforeend',`<div class="result"><b>⭐ LEVEL CLEARED! +10 coins</b><br>Next up: ${stages[current+1].name}. You have unlocked the next world.</div><div class="controls"><button onclick="go(${current+1})">Next level →</button></div>`);}
+ else {$('lesson').insertAdjacentHTML('beforeend',`<div class="result"><h3>🏆 QUEST COMPLETE!</h3>You followed the full RAG pipeline: ingest → chunk → embed → retrieve → augment → generate. Remember: the model's answer is only as useful as the retrieved evidence and the instructions it receives.</div><button onclick="resetGame()">Play again ↻</button>`);}
+}
+function renderLesson(){
+ const s=stages[current];let body=`<h2 class="step-title"><span class="emoji">${s.icon}</span>${s.title}</h2><p class="desc">${s.desc}</p>`;
+ if(current===0){
+  body+=`<div class="doc-grid">${docs.map(d=>`<div class="doc"><b>📄 ${d.title}</b><p>${d.text}</p></div>`).join('')}</div><div class="hint"><b>Think of it like:</b> stocking a library before the adventure begins. No library, no useful evidence to retrieve.</div><div class="controls"><button onclick="complete()">📥 ${s.button}</button></div>`;
+ } else if(current===1){
+  const demoChunks=docs.flatMap(d=>d.text.split(/(?<=[.!?])\\s+/).filter(Boolean).map((t,i)=>({title:d.title,text:t,id:d.id+'-'+i})));
+  body+=`<div class="hint">Original document: <b>${docs[1].title}</b><br>${docs[1].text}</div><div class="controls"><button onclick="showChunks()">🧱 ${s.button}</button></div><div id="chunkArea"></div>`;
+ } else if(current===2){
+  body+=`<div class="hint"><b>Example text:</b> “The castle library opens at 9 AM.”<br><b>Illustrative vector:</b> [0.18, -0.42, 0.77, 0.09, …]</div><p class="tiny">Actual embedding vectors may contain hundreds or thousands of dimensions. The numbers below are made-up visuals, not model output.</p><div class="controls"><button onclick="showVectors()">🧭 ${s.button}</button></div><div id="vectorArea"></div>`;
+ } else if(current===3){
+  body+=`<label for="question"><b>Your question</b></label><textarea id="question" class="query">${escapeHtml(lastQuery)}</textarea><div class="controls"><button onclick="retrieve()">🔎 ${s.button}</button></div><div id="retrievalArea"></div>`;
+ } else if(current===4){
+  body+=`<p class="tiny">Question from the previous level:</p><div class="result"><b>${escapeHtml(lastQuery)}</b></div><div class="controls"><button onclick="buildPrompt()">🧰 ${s.button}</button></div><div id="promptArea"></div>`;
+ } else {
+  body+=`<div class="hint">A language model receives the question and retrieved context. It then generates a natural-language response.</div><div class="controls"><button onclick="generateAnswer()">✨ ${s.button}</button></div><div id="answerArea"></div>`;
+ }
+ body+=`<div class="hint"><b>🧠 Remember:</b> ${s.learn}</div>`;
+ $('lesson').innerHTML=body;
+}
+function showChunks(){
+ chunks=docs.flatMap(d=>d.text.split(/(?<=[.!?])\\s+/).filter(Boolean).map((t,i)=>({title:d.title,text:t,id:d.id+'-'+i})));
+ $('chunkArea').innerHTML=`<div class="result"><h3>🧱 ${chunks.length} chunks created</h3>${chunks.map((c,i)=>`<p><span class="tag">CHUNK ${i+1}</span> <b>${c.title}:</b> ${c.text}</p>`).join('')}</div><button onclick="complete()">Looks good — continue</button>`;
+}
+function showVectors(){
+ vectors=chunks.length?chunks:docs.flatMap(d=>d.text.split(/(?<=[.!?])\\s+/).filter(Boolean).map((t,i)=>({title:d.title,text:t,id:d.id+'-'+i})));
+ const sample=vectors.slice(0,5).map((c,i)=>`<div class="result"><b>${c.title}</b><br><code>[${(Math.sin(i+1)*.6).toFixed(2)}, ${(Math.cos(i+2)*.6).toFixed(2)}, ${(Math.sin(i+3)*.6).toFixed(2)}, …]</code><br><span class="tiny">Visual placeholder vector for: “${c.text}”</span></div>`).join('');
+ $('vectorArea').innerHTML=`<div class="result"><h3>🧭 Vector index preview</h3>${sample}<p class="tiny">In a real build, an embedding API creates these vectors and a vector database stores them alongside chunk text and metadata.</p></div><button onclick="complete()">Index vectors — continue</button>`;
+}
+function tokenize(s){return s.toLowerCase().match(/[a-z0-9]+/g)||[]}
+function score(q,text){const stop=new Set(['the','a','an','is','does','do','what','when','where','how','and','to','of','in','on','for','at','i','me','it']);const qwords=[...new Set(tokenize(q).filter(w=>!stop.has(w)))];const twords=tokenize(text);return qwords.length?qwords.reduce((n,w)=>n+(twords.includes(w)?1:0),0)/qwords.length:0}
+function retrieve(){
+ lastQuery=$('question').value.trim()||'What time does the castle library open?';
+ const source=chunks.length?chunks:docs.map(d=>({title:d.title,text:d.text,id:d.id}));
+ retrieved=source.map(c=>({...c,score:score(lastQuery,c.text+' '+c.title)})).filter(c=>c.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
+ $('retrievalArea').innerHTML=`<div class="result"><h3>🔎 Top matching chunks</h3>${retrieved.length?retrieved.map((c,i)=>`<p><span class="tag">RANK ${i+1} • SCORE ${(c.score*100).toFixed(0)}%</span><b>${c.title}</b><br>${c.text}</p>`).join(''):'No strong match found. Try “What time does the castle library open?” or “What does RAG stand for?”'}<p class="tiny">This demo ranks chunks using keyword overlap. Production RAG often uses semantic vector similarity and/or hybrid search.</p></div><button onclick="complete()">Use these results — continue</button>`;
+}
+function buildPrompt(){
+ if(!retrieved.length){retrieved=docs.map(d=>({...d,score:score(lastQuery,d.text+' '+d.title)})).filter(c=>c.score>0).sort((a,b)=>b.score-a.score).slice(0,3);}
+ const context=retrieved.length?retrieved.map((c,i)=>`[${i+1}] ${c.title}: ${c.text}`).join('\n\n'):'[No relevant passages retrieved.]';
+ $('promptArea').innerHTML=`<div class="result"><h3>🧰 Augmented prompt preview</h3><p><b>System instruction</b><br>Answer using the supplied context. If the context does not contain the answer, say you do not have enough information. Cite the source title.</p><hr><p><b>Retrieved context</b></p><pre style="white-space:pre-wrap;font:12px/1.5 inherit">${escapeHtml(context)}</pre><hr><p><b>User question</b><br>${escapeHtml(lastQuery)}</p></div><button onclick="complete()">Send prompt to model — continue</button>`;
+}
+function generateAnswer(){
+ let answer='',sources=[];
+ const q=lastQuery.toLowerCase();
+ if(q.includes('rag')||q.includes('retrieval-augmented')){answer='RAG stands for Retrieval-Augmented Generation. It retrieves relevant external information and adds it to a language model’s context before generation.';sources=['RAG Quick Reference'];}
+ else if(q.includes('library')||q.includes('open')||q.includes('time')){answer='The castle library opens at 9 AM.';sources=['Mushroom Kingdom Guide'];}
+ else if(q.includes('flower')||q.includes('fire')){answer='A fire flower grants a fire ability.';sources=['Power-Up Handbook'];}
+ else if(q.includes('mushroom')||q.includes('grow')){answer='A super mushroom makes the hero grow.';sources=['Power-Up Handbook'];}
+ else if(q.includes('pipe')){answer='Green pipes connect selected regions. Check that the destination is listed on the travel map before entering.';sources=['Pipe Travel Manual'];}
+ else if(q.includes('gate')||q.includes('close')){answer='The east gate closes at 5 PM.';sources=['Castle Safety FAQ'];}
+ else if(q.includes('coin')){answer='In this imaginary game, ten coins earn a bonus life.';sources=['Coin Collection Rules'];}
+ else if(retrieved.length){answer='The retrieved passages contain related information, but this simple simulator cannot confidently compose a specific answer. Try asking a question that matches a source fact.';sources=retrieved.map(x=>x.title);}
+ else {answer='I do not have enough information in the retrieved context to answer that confidently.';sources=[];}
+ const validSources=sources.filter(t=>retrieved.length===0||retrieved.some(r=>r.title===t)||docs.some(d=>d.title===t));
+ $('answerArea').innerHTML=`<div class="result"><h3>✨ Generated answer</h3><p>${escapeHtml(answer)}</p><b>Sources</b><br>${validSources.length?validSources.map(s=>`<span class="tag">📄 ${escapeHtml(s)}</span>`).join(''):'<span class="tag">No source found</span>'}<p class="tiny">Educational simulation: this answer is produced by simple browser rules, not a real LLM. A production RAG app would call a language model with the augmented prompt.</p></div><button onclick="complete()">🏁 Finish quest</button>`;
+}
+function resetGame(){current=0;cleared=new Set();coins=0;chunks=[];vectors=[];retrieved=[];lastQuery='What time does the castle library open?';renderLevels();renderLesson();}
+renderLevels();renderLesson();
+</script>
+</body>
+</html>
